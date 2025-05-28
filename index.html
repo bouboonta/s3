@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Volunteer System</title>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        section { margin-bottom: 30px; border: 1px solid #ccc; padding: 10px; }
+        li { margin-bottom: 5px; }
+        button { margin-left: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Volunteer System (Full CRUD)</h1>
+
+    <!-- ===== Volunteers ===== -->
+    <section>
+        <h2>Volunteers</h2>
+        <form id="volunteerForm">
+            <input type="hidden" id="volunteerId">
+            <input type="text" id="volunteerName" placeholder="Name" required>
+            <input type="email" id="volunteerEmail" placeholder="Email" required>
+            <input type="text" id="volunteerPhone" placeholder="Phone">
+            <button type="submit">Save Volunteer</button>
+            <button type="button" id="cancelVolunteerEdit" style="display:none;">Cancel</button>
+        </form>
+        <ul id="volunteersList"></ul>
+    </section>
+
+    <!-- ===== Events ===== -->
+    <section>
+        <h2>Events</h2>
+        <form id="eventForm">
+            <input type="hidden" id="eventId">
+            <input type="text" id="eventTitle" placeholder="Title" required>
+            <input type="text" id="eventDescription" placeholder="Description">
+            <input type="date" id="eventDate" required>
+            <input type="text" id="eventLocation" placeholder="Location">
+            <input type="number" id="eventMaxParticipants" placeholder="Max Participants">
+            <button type="submit">Save Event</button>
+            <button type="button" id="cancelEventEdit" style="display:none;">Cancel</button>
+        </form>
+        <ul id="eventsList"></ul>
+    </section>
+
+    <!-- ===== Participations ===== -->
+    <section>
+        <h2>Participations</h2>
+        <form id="participationForm">
+            <select id="participationVolunteerId" required></select>
+            <select id="participationEventId" required></select>
+            <button type="submit">Register Participation</button>
+        </form>
+        <ul id="participationsList"></ul>
+    </section>
+
+    <script>
+        // URLs
+        const API = 'http://localhost:8000';
+
+        // ===== Volunteers =====
+        const volunteerForm = document.getElementById('volunteerForm');
+        const volunteersList = document.getElementById('volunteersList');
+        const cancelVolunteerEdit = document.getElementById('cancelVolunteerEdit');
+
+        volunteerForm.addEventListener('submit', async e => {
+            e.preventDefault();
+            const id = document.getElementById('volunteerId').value;
+            const data = {
+                name: document.getElementById('volunteerName').value,
+                email: document.getElementById('volunteerEmail').value,
+                phone: document.getElementById('volunteerPhone').value
+            };
+            if (id) {
+                await axios.put(`${API}/volunteers/${id}`, data);
+            } else {
+                await axios.post(`${API}/volunteers`, data);
+            }
+            volunteerForm.reset();
+            document.getElementById('volunteerId').value = '';
+            cancelVolunteerEdit.style.display = 'none';
+            loadVolunteers();
+        });
+
+        cancelVolunteerEdit.addEventListener('click', () => {
+            volunteerForm.reset();
+            document.getElementById('volunteerId').value = '';
+            cancelVolunteerEdit.style.display = 'none';
+        });
+
+        async function loadVolunteers() {
+            const res = await axios.get(`${API}/volunteers`);
+            volunteersList.innerHTML = res.data.map(v => `
+                <li>
+                    <strong>${v.name}</strong> - ${v.email} (${v.phone})
+                    <button onclick="editVolunteer('${v.id}')">Edit</button>
+                    <button onclick="deleteVolunteer('${v.id}')">Delete</button>
+                </li>`).join('');
+            loadVolunteerOptions(res.data);
+        }
+
+        async function editVolunteer(id) {
+            const res = await axios.get(`${API}/volunteers/${id}`);
+            const v = res.data;
+            document.getElementById('volunteerId').value = v.id;
+            document.getElementById('volunteerName').value = v.name;
+            document.getElementById('volunteerEmail').value = v.email;
+            document.getElementById('volunteerPhone').value = v.phone;
+            cancelVolunteerEdit.style.display = 'inline';
+        }
+
+        async function deleteVolunteer(id) {
+            if (confirm('Delete this volunteer?')) {
+                await axios.delete(`${API}/volunteers/${id}`);
+                loadVolunteers();
+            }
+        }
+
+        function loadVolunteerOptions(volunteers) {
+            const select = document.getElementById('participationVolunteerId');
+            select.innerHTML = volunteers.map(v => `<option value="${v.id}">${v.name}</option>`).join('');
+        }
+
+        // ===== Events =====
+        const eventForm = document.getElementById('eventForm');
+        const eventsList = document.getElementById('eventsList');
+        const cancelEventEdit = document.getElementById('cancelEventEdit');
+
+        eventForm.addEventListener('submit', async e => {
+            e.preventDefault();
+            const id = document.getElementById('eventId').value;
+            const data = {
+                title: document.getElementById('eventTitle').value,
+                description: document.getElementById('eventDescription').value,
+                date: document.getElementById('eventDate').value,
+                location: document.getElementById('eventLocation').value,
+                max_participants: parseInt(document.getElementById('eventMaxParticipants').value)
+            };
+            if (id) {
+                await axios.put(`${API}/events/${id}`, data);
+            } else {
+                await axios.post(`${API}/events`, data);
+            }
+            eventForm.reset();
+            document.getElementById('eventId').value = '';
+            cancelEventEdit.style.display = 'none';
+            loadEvents();
+        });
+
+        cancelEventEdit.addEventListener('click', () => {
+            eventForm.reset();
+            document.getElementById('eventId').value = '';
+            cancelEventEdit.style.display = 'none';
+        });
+
+        async function loadEvents() {
+            const res = await axios.get(`${API}/events`);
+            eventsList.innerHTML = res.data.map(e => `
+                <li>
+                    <strong>${e.title}</strong> (${e.date}) - ${e.location}
+                    <button onclick="editEvent('${e.id}')">Edit</button>
+                    <button onclick="deleteEvent('${e.id}')">Delete</button>
+                </li>`).join('');
+            loadEventOptions(res.data);
+        }
+
+        async function editEvent(id) {
+            const res = await axios.get(`${API}/events/${id}`);
+            const e = res.data;
+            document.getElementById('eventId').value = e.id;
+            document.getElementById('eventTitle').value = e.title;
+            document.getElementById('eventDescription').value = e.description;
+            document.getElementById('eventDate').value = e.date;
+            document.getElementById('eventLocation').value = e.location;
+            document.getElementById('eventMaxParticipants').value = e.max_participants;
+            cancelEventEdit.style.display = 'inline';
+        }
+
+        async function deleteEvent(id) {
+            if (confirm('Delete this event?')) {
+                await axios.delete(`${API}/events/${id}`);
+                loadEvents();
+            }
+        }
+
+        function loadEventOptions(events) {
+            const select = document.getElementById('participationEventId');
+            select.innerHTML = events.map(e => `<option value="${e.id}">${e.title}</option>`).join('');
+        }
+
+        // ===== Participations =====
+        const participationForm = document.getElementById('participationForm');
+        const participationsList = document.getElementById('participationsList');
+
+        participationForm.addEventListener('submit', async e => {
+            e.preventDefault();
+            const data = {
+                volunteer_id: document.getElementById('participationVolunteerId').value,
+                event_id: document.getElementById('participationEventId').value
+            };
+            await axios.post(`${API}/participations`, data);
+            participationForm.reset();
+            loadParticipations();
+        });
+
+        async function loadParticipations() {
+            const res = await axios.get(`${API}/participations`);
+            participationsList.innerHTML = res.data.map(p => `
+                <li>
+                    Volunteer: ${p.volunteer_id}, Event: ${p.event_id}, Registered: ${p.registration_date}
+                </li>`).join('');
+        }
+
+        // ===== Initial Load =====
+        loadVolunteers();
+        loadEvents();
+        loadParticipations();
+    </script>
+</body>
+</html>
